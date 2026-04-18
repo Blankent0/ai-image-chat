@@ -1,0 +1,47 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+
+# Production
+/build
+/dist
+
+# Misc
+.DS_Store
+*.pem
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment (IMPORTANT: never commit real API keys)
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.production.local
+
+# TypeScript build info
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# Runtime / cache
+/temp/
+.turbo/
+
+# Agent / local tooling
+.claude/
