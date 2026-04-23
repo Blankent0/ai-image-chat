@@ -47,22 +47,6 @@ export default function MainCanvas({ selectedGen, isGenerating, hasAnyGeneration
         const zoomInDisabled = view.kind === 'zoom' && view.pct >= ZOOM_MAX;
         const zoomOutDisabled = view.kind === 'zoom' && view.pct <= ZOOM_MIN;
 
-        const imgStyle: React.CSSProperties = isFit
-            ? {
-                maxWidth: '100%',
-                maxHeight: '100%',
-                width: 'auto',
-                height: 'auto',
-                objectFit: 'contain',
-            }
-            : natural
-                ? {
-                    width: `${natural.w * (view.pct / 100)}px`,
-                    height: `${natural.h * (view.pct / 100)}px`,
-                    maxWidth: 'none',
-                }
-                : { maxWidth: '100%', maxHeight: '100%' };
-
         return (
             <div className="w-full h-full relative">
                 {/* Zoom controls */}
@@ -93,17 +77,55 @@ export default function MainCanvas({ selectedGen, isGenerating, hasAnyGeneration
                     </button>
                 </div>
 
-                {/* Scrollable image area */}
-                <div className="w-full h-full overflow-auto">
-                    <div className="min-w-full min-h-full flex items-center justify-center p-10">
-                        <div className="relative max-w-full">
-                            <div className="relative rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.7)]">
+                {isFit ? (
+                    // Fit mode: flex column, image container gets explicit remaining height
+                    <div className="w-full h-full flex flex-col p-10 gap-4">
+                        <div className="flex-1 min-h-0 w-full relative rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.7)]">
+                            <img
+                                key={selectedGen.url}
+                                src={selectedGen.url}
+                                alt="Current render"
+                                className="block w-full h-full object-contain"
+                                onLoad={(e) => {
+                                    const el = e.currentTarget;
+                                    setNatural({ w: el.naturalWidth, h: el.naturalHeight });
+                                }}
+                            />
+                            {isGenerating && (
+                                <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center gap-2.5">
+                                    <Loader2 size={20} className="text-[var(--color-accent)] animate-spin" />
+                                    <span className="text-xs uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
+                                        Rendering next iteration
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        {selectedGen.adjustmentText && (
+                            <p className="flex-shrink-0 text-xs text-[var(--color-ink-soft)] italic max-w-[640px] text-center px-4 leading-relaxed mx-auto">
+                                &ldquo;{selectedGen.adjustmentText}&rdquo;
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    // Zoom mode: scroll container, image at natural × pct pixels
+                    <div className="w-full h-full overflow-auto">
+                        <div className="flex flex-col items-center gap-4 p-10 min-w-full min-h-full">
+                            <div
+                                className="relative rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.7)] flex-shrink-0"
+                                style={
+                                    natural
+                                        ? {
+                                            width: `${natural.w * (view.pct / 100)}px`,
+                                            height: `${natural.h * (view.pct / 100)}px`,
+                                        }
+                                        : undefined
+                                }
+                            >
                                 <img
                                     key={selectedGen.url}
                                     src={selectedGen.url}
                                     alt="Current render"
-                                    className="block"
-                                    style={imgStyle}
+                                    className="block w-full h-full object-contain"
                                     onLoad={(e) => {
                                         const el = e.currentTarget;
                                         setNatural({ w: el.naturalWidth, h: el.naturalHeight });
@@ -119,13 +141,13 @@ export default function MainCanvas({ selectedGen, isGenerating, hasAnyGeneration
                                 )}
                             </div>
                             {selectedGen.adjustmentText && (
-                                <p className="mt-4 text-xs text-[var(--color-ink-soft)] italic max-w-[640px] text-center px-4 leading-relaxed mx-auto">
+                                <p className="text-xs text-[var(--color-ink-soft)] italic max-w-[640px] text-center px-4 leading-relaxed">
                                     &ldquo;{selectedGen.adjustmentText}&rdquo;
                                 </p>
                             )}
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         );
     }
@@ -151,7 +173,7 @@ export default function MainCanvas({ selectedGen, isGenerating, hasAnyGeneration
                 </div>
                 <p className="font-serif text-xl text-[var(--color-ink-soft)] mb-2">等待你的第一张图</p>
                 <p className="text-xs leading-relaxed">
-                    在左侧对话中上传 3D 模型图并选择风格，生成的渲染图会显示在这里
+                    在左侧对话中上传图片并选择功能模块，生成结果会显示在这里
                 </p>
             </div>
         </div>
