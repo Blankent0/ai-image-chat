@@ -2,83 +2,41 @@
 
 ## 项目概述
 
-这是一个基于豆包 Seedream 技术的对话式 AI 图片生成平台，支持图片上传分析和智能图片生成。用户可以在前端上传图片并输入文本描述，然后调用 Seedream 模型生成新的图片并返回到前端。
+面向室内设计师的 3D 模型图风格化工作台：上传 3D 模型渲染图 → 选预置风格 → 生成风格化效果图 → 多轮链式迭代加工。交付物仅图片，不返回分析文本。
 
 ## 技术栈
 
-- **前端**: Next.js 15+, TypeScript, Tailwind CSS 4
-- **UI**: Lucide React 图标库
-- **AI服务**: 豆包 Seedream API
-- **模型**: `doubao-seed-2-0-lite-260215` (文本生成), `doubao-seedream-5-0-260128` (图片生成)
-- **开发工具**: Cloudflared (内网穿透)
+- **前端**：Next.js 16, React 19, TypeScript, Tailwind CSS 4
+- **UI**：Lucide React 图标 + Inter / Noto Serif SC 字体
+- **AI 服务**：豆包 Seedream (`doubao-seedream-5-0-260128`)
+- **API 端点**：`https://ark.cn-beijing.volces.com/api/v3/images/generations`
 
 ## 核心功能
 
-1. **对话式界面** - 自然的聊天体验，支持连续对话
-2. **图片上传分析** - 上传图片让 AI 分析内容和风格
-3. **智能图片生成** - 基于描述或参考图片生成新设计
-4. **迭代优化** - 基于生成结果继续对话改进
-5. **响应式设计** - 适配桌面和移动设备
+1. **3D 模型图上传** — 首轮锁定，作为所有后续轮次的原始参考
+2. **预置风格选择** — 网格卡片，首轮锁定
+3. **可选补充提示词** — 首轮可为空，直接按风格生成
+4. **多轮链式加工** — 每轮以上一张 CDN URL 为参考图继续迭代
+5. **左右分栏 + 底部对话框** — 左控制面板、右图片流、底部常显 composer
 
 ## 开发历程
 
-### 初始阶段 - 项目搭建
+### 阶段 1：初版通用对话式设计助手（已废弃）
 
-- 使用 Next.js 15+ 搭建基础框架
-- 集成 Tailwind CSS 4 进行样式设计
-- 配置 TypeScript 类型系统
-- 搭建基本的对话界面组件
+- 聊天气泡 UI，同时返回分析文本 + 图片
+- 三个 API：`generate-design`（纯文本）/ `generate-from-image`（图片分析）/ `generate-image`（图生图）
+- 依赖 `tempFileStorage.ts` + `/temp/[filename]` 路由 + cloudflared 隧道暴露参考图公网 URL
 
-### API 集成阶段
+### 阶段 2：去除 cloudflared，base64 直传（2026-04-18）
 
-#### 豆包 API 配置
-- 配置豆包 API 密钥 (`SEEDREAM_API_KEY`)
-- 使用 OpenAI 兼容的客户端连接豆包服务
-- API 端点: `https://ark.cn-beijing.volces.com/api/v3`
+**发现**：Seedream API 的 `image` 字段原生支持 `data:image/<格式>;base64,<编码>` 形式 data URL。
 
-#### 核心 API 路由
-1. **文本对话** (`/api/generate-design`)
-   - 模型: `doubao-seed-2-0-lite-260215`
-   - 功能: 处理纯文本设计咨询
-   
-2. **图片分析** (`/api/generate-from-image`)
-   - 模型: 豆包多模态模型
-   - 功能: 分析上传的图片并提供建议
-   
-3. **图片生成** (`/api/generate-image`)
-   - 模型: `doubao-seedream-5-0-260128`
-   - 功能: 基于文本或参考图片生成新图片
-
-### 关键技术突破
-
-#### 1. Next.js 15+ 动态路由参数处理
-**问题**: Next.js 15+ 中动态路由参数变为 Promise 类型，导致 500 错误
-```typescript
-// 错误的写法
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { filename: string } }
-)
-
-// 正确的写法 
-export async function GET(
-    request: NextRequest,
-    context: { params: Promise<{ filename: string }> }
-) {
-    const params = await context.params;
-    const filename = params.filename;
-}
-```
-
-**解决方案**: 修改 `/src/app/temp/[filename]/route.ts` 中的参数处理逻辑
-
-#### 2. 参考图传输方案（2026-04-18 简化）
-**早期方案**: Seedream API 需要通过 URL 访问参考图片 → 把 base64 存成临时文件 + cloudflared 内网穿透，暴露公网 URL 给 Seedream 拉取。依赖 `tempFileStorage.ts`、`/temp/[filename]` 路由和 `PUBLIC_BASE_URL` 环境变量。
-
-**当前方案**: Seedream API 的 `image` 字段直接支持 `data:image/<格式>;base64,<编码>` 形式的 data URL。两个路由（`generate-image`、`generate-from-image`）均改为把前端上传的 base64 直接包装成 data URL 透传，彻底去除临时文件、公网 URL、cloudflared 隧道三件套。
+**改造**：
+- 两个图生图路由改为把前端 base64 直接包装成 data URL 透传
+- 彻底删除 `src/utils/tempFileStorage.ts`、`src/app/temp/[filename]/route.ts`、`temp/` 目录
+- 移除 `uuid` / `@types/uuid` 依赖、`PUBLIC_BASE_URL` 环境变量、cloudflared 三件套
 
 ```typescript
-// 参考图处理（base64 直传）
 if (referenceImage) {
     if (referenceImage.startsWith('http')) {
         requestBody.image = referenceImage;
@@ -90,41 +48,95 @@ if (referenceImage) {
 }
 ```
 
-已删除：`src/utils/tempFileStorage.ts`、`src/app/temp/[filename]/route.ts`、`temp/` 目录、`uuid` / `@types/uuid` 依赖、`PUBLIC_BASE_URL` 环境变量。
+**坑点**：本地 Clash/代理劫持 `*.volces.com` 走海外出口 → TLS ECONNRESET。解决：关代理或加入直连白名单。
 
-### 主要技术难点及解决方案
+### 阶段 3：重构为 3D 风格化工作台（2026-04-18）
 
-#### 问题 1: 图片尺寸验证错误
-**错误信息**: "expected the width to be at least 14px, but received a 1x1px image instead"
-**原因**: 使用了无效的 1x1px 测试图片
-**解决**: 使用有效的测试图片，确保图片尺寸符合 API 要求
+**背景**：通用"对话式设计助手"过于宽泛。用户需求聚焦为：上传 3D 图 → 选风格 → 可选补充 prompt → 生图 → 多轮加工。
 
-#### 问题 2: 临时文件 URL 访问 500 错误
-**原因**: Next.js 15+ 动态路由参数处理变化
-**解决**: 更新路由处理器以正确处理 Promise 类型的参数
+**多轮策略选型**（调研 `example/` 下 Flovart / OpenLovart / MeiGen 后得出结论）：
 
-#### 问题 3: Base64 图片数据处理
-**解决方案**: 实现完整的 base64 -> 临时文件 -> 公网 URL 的转换流程
+- ❌ **OpenAI messages 滑窗**：Seedream 图生图只有 `prompt + image` 两字段，不支持 messages 数组
+- ❌ **宿主 LLM 维护上下文**：场景是"对图做加工"，不是"对话"，不需要语言记忆
+- ✅ **图生图链式迭代**：每轮把上一张输出 CDN URL 作为下一轮参考图，文字只传本轮"调整指令"
 
-### 成功验证的完整流程
+**范围**：
+- 废弃 `DesignChat.tsx`，新建 `ImageStudio.tsx` + `studio/*` 子组件
+- 删除 `generate-design` 和 `generate-from-image` 两个 API
+- 新建 `src/types/studio.ts`、`src/constants/stylePresets.ts`
+- 改写 `generate-image` 路由：支持首轮（`sourceImage + stylePrompt + userPrompt`）和后续轮（`referenceImageUrl + adjustmentPrompt`）
 
-1. **用户上传图片**: 前端处理图片为 base64 格式
-2. **data URL 拼装**: 后端把 base64 包装成 `data:image/jpeg;base64,...`
-3. **API 调用**: Seedream API 直接接收 data URL 作为参考图
-4. **图片生成**: API 返回生成的图片 URL
-5. **结果展示**: 前端展示生成的图片
+**锁定规则**：首轮一旦生成，`sourceImage` 和 `selectedStyleId` 锁死（UI 禁用），保证链式语义一致。「重新开始」清空 `generations` 并解锁。
 
-### 最终测试结果
+### 阶段 4：UI 迭代（2026-04-18）
 
-成功实现了完整的端到端图片生成流程：
-- 输入: 文本描述 + 参考图片
-- 输出: 生成的图片 URL
-- 示例生成结果: `https://ark-acg-cn-beijing.tos-cn-beijing.volces.com/doubao-seedream-5-0/...`
+前端布局经历三轮调整：
 
-## 环境变量配置
+1. **初版**：左控制面板 + 右图片流，底部无常显输入 → 用户反馈调整指令入口不够显眼
+2. **第二版**：把所有输入移到底部 composer（上传 + 风格 + 文字）→ 用户反馈要求左右分栏
+3. **第三版**（最终）：
+   - **左侧 1/4 宽**：SourceUploader（上）+ StyleSelector（下）
+   - **右侧 flex-1**：GenerationStream 编辑式画廊（01 Origin / 02 Iteration 1 …，oldest-first，生成时自动滚到底部）
+   - **底部全宽 composer**：textarea + 提交按钮，Enter 提交 / Shift+Enter 换行
+4. **视觉升级**：用户指出纯白页面不符合室内设计师审美诉求
+   - 改为暖色深色调：`--color-canvas: #0E0C0A` / `--color-surface: #171411`
+   - 香槟金强调色：`--color-accent: #C9A56F`
+   - 衬线标题：Noto Serif SC，标题为 "Atelier"
+   - 编号采用衬线大数字 + 全大写小字标签（"01 · Origin"）
+
+### 阶段 5：推送 GitHub（2026-04-18）
+
+- 新建 `.gitignore`，排除 `.env.local`、`node_modules`、`.next`、`.claude/`
+- 仓库：https://github.com/Blankent0/ai-image-chat
+- 推送时远程已有自动生成的 README，用 `git merge --allow-unrelated-histories -X ours origin/main` 合并
+- 最终提交：`d1e311a`（合并）+ `fff948a`（工作台初版）
+
+## 数据结构
+
+```typescript
+// src/types/studio.ts
+interface StylePreset {
+    id: string;
+    name: string;
+    promptFragment: string;
+    thumbnail?: string;
+}
+interface SourceImage {
+    dataUrl: string;
+    name: string;
+}
+interface GeneratedImage {
+    id: string;
+    url: string;
+    prompt: string;
+    adjustmentText?: string;
+    createdAt: number;
+}
+interface StudioState {
+    sourceImage: SourceImage | null;
+    selectedStyleId: string | null;
+    generations: GeneratedImage[];  // 新 → 旧存储，UI 层反转为旧 → 新展示
+    adjustmentInput: string;
+    isGenerating: boolean;
+}
+```
+
+## API 设计
+
+### `POST /api/generate-image`
+
+**首轮**：前端传 `sourceImage`（data URL）+ `stylePrompt`（从选中 preset 取）+ `userPrompt`（可空）。后端拼：
+```
+userPrompt ? `${userPrompt}. ${stylePrompt}` : stylePrompt
+```
+
+**后续轮**：前端传 `referenceImageUrl`（上一张 CDN URL）+ `adjustmentPrompt`。后端直接把 `adjustmentPrompt` 作 prompt（风格已固化在参考图里）。
+
+**返回**：`{ imageUrl, metadata: { prompt, isFollowUp } }`
+
+## 环境变量
 
 ```bash
-# 豆包 Seedream API Key
 SEEDREAM_API_KEY=your-doubao-seedream-api-key-here
 ```
 
@@ -133,86 +145,47 @@ SEEDREAM_API_KEY=your-doubao-seedream-api-key-here
 ```
 src/
 ├── app/
-│   ├── api/
-│   │   └── generate-image/route.ts      # 图生图 API（首轮 + 后续轮）
+│   ├── api/generate-image/route.ts    # 唯一 API
+│   ├── globals.css                    # 暖色深色调 CSS 变量
+│   ├── layout.tsx                     # 字体加载
 │   └── page.tsx
 ├── components/
-│   ├── ImageStudio.tsx                  # 主容器
+│   ├── ImageStudio.tsx                # 主容器（状态 + 布局）
 │   └── studio/
-│       ├── SourceUploader.tsx           # 3D 图上传
-│       ├── StyleSelector.tsx            # 风格网格
-│       ├── GenerationStream.tsx         # 右侧图片流
-│       └── Toast.tsx                    # 错误提示
-├── constants/
-│   └── stylePresets.ts                  # 风格数据（待填充）
-└── types/
-    └── studio.ts                        # 核心类型
+│       ├── SourceUploader.tsx         # 3D 图上传（拖拽 + 点击）
+│       ├── StyleSelector.tsx          # 风格 2 列网格
+│       ├── GenerationStream.tsx       # 编辑式画廊 + 骨架屏
+│       └── Toast.tsx                  # 右上角错误提示
+├── constants/stylePresets.ts          # 风格数据（占位，待填充）
+└── types/studio.ts                    # 核心类型
 ```
 
-### 2026-04-18 重构：转型为 3D 风格化工作台
-- **场景聚焦**：从通用设计助手改为「3D 模型图 → 预置风格 → 多轮加工」
-- **UI 重写**：聊天气泡 → 左右分栏（左控制面板 + 右图片流）
-- **多轮机制**：Seedream 图生图链式迭代 —— 每轮把上一张输出 URL 作为下一轮参考图，不走语言模型 messages 滑窗
-- **裁剪**：删除 `generate-design` 和 `generate-from-image` 两个 API，场景里不再需要文本分析
-- **锁定规则**：首轮锁定 3D 图 + 风格，后续仅输入调整指令；「重新开始」解锁
+## 验证流程
 
-## 开发命令
+1. `npm run dev`（先关本地代理）
+2. 上传 3D 图 + 选风格 → 点生成 → 右侧出现首张风格化图
+3. 输入"把颜色换成暖色调" → 右侧追加新图（基于上一张）
+4. 多轮进行中：上传区 + 风格区灰显禁用
+5. 点「重新开始」→ 清空右侧并解锁左侧
+6. 断网点生成 → 右上角 toast 提示，骨架屏消失
+7. `npx tsc --noEmit` 零错误
 
-```bash
-# 启动开发服务器
-npm run dev
+## 未做 / 未来方向
 
-# 构建生产版本
-npm run build
+- **未做**：后端持久化、下载导出、风格内容填充、移动端自适应、用户认证
+- **风格库**：需要设计师补充 `stylePresets.ts`（现代简约 / 北欧 / 日式侘寂 / 工业风等）
+- **批量生成**：一次选多个风格，并行产出对比
+- **历史记录**：跨会话保存生成链
 
-# 启动生产服务器
-npm run start
-```
+## 问题排查
 
-## 部署注意事项
-
-1. **API 密钥配置**: 确保 `SEEDREAM_API_KEY` 正确配置
-2. **网络访问**: 生产环境需要确保 Seedream API 能访问临时文件
-3. **文件清理**: 定期清理过期的临时文件
-4. **错误处理**: 完善的错误处理和日志记录
-
-## 性能优化
-
-1. **临时文件缓存**: 设置 1 小时的缓存时间
-2. **自动清理**: 定期清理超过 1 小时的临时文件
-3. **错误重试**: API 调用失败时的重试机制
-
-## 安全考虑
-
-1. **文件类型验证**: 仅支持常见的图片格式
-2. **文件大小限制**: 防止大文件上传
-3. **临时文件清理**: 定期清理避免磁盘空间耗尽
-4. **API 密钥保护**: 环境变量存储敏感信息
-
-## 未来优化方向
-
-1. **用户认证**: 添加用户登录和会话管理
-2. **历史记录**: 保存用户的对话和生成历史
-3. **批量处理**: 支持批量图片生成
-4. **模板系统**: 预设计的设计模板
-5. **性能监控**: 添加性能监控和分析
-
-## 问题排查指南
-
-### 常见问题
-
-1. **500 错误**: 检查 Next.js 路由参数处理
-2. **图片访问失败**: 确认 cloudflared 隧道正常运行
-3. **API 调用失败**: 检查 API 密钥和网络连接
-4. **图片尺寸错误**: 确保上传的图片尺寸符合要求
-
-### 调试方法
-
-1. **查看控制台日志**: 详细的请求和响应日志
-2. **网络面板**: 检查 API 请求和响应
-3. **文件系统**: 确认临时文件正确生成
-4. **隧道状态**: 确认 cloudflared 隧道正常
+| 现象 | 原因 | 解决 |
+|---|---|---|
+| TLS ECONNRESET | 本地代理劫持 `*.volces.com` | 关代理或加直连白名单 |
+| `SEEDREAM_API_KEY not configured` | `.env.local` 未配置 | 填入火山引擎 Ark Key |
+| 图片尺寸错误 | 上传图小于 14×14 | 换有效尺寸图 |
+| `.next` 类型陈旧 | 删文件后缓存未更新 | `rm -rf .next` |
 
 ---
 
-*此文档记录了项目从初始搭建到完整功能实现的全过程，包含所有关键技术决策和解决方案，便于后续开发和维护。*
+*最后更新：2026-04-18*

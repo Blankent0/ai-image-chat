@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 interface GenerateImageBody {
     sourceImage?: string;        // 首轮: data URL
-    stylePrompt?: string;        // 首轮: 风格英文片段
+    functionPrompt?: string;     // 首轮: 功能模块默认 prompt（英文）
     userPrompt?: string;         // 首轮: 用户补充
     referenceImageUrl?: string;  // 后续轮: 上一张 Seedream URL
     adjustmentPrompt?: string;   // 后续轮: 调整指令
@@ -15,11 +15,11 @@ function normalizeReferenceImage(raw: string): string {
     return `data:image/jpeg;base64,${raw}`;
 }
 
-function buildFirstRoundPrompt(userPrompt: string | undefined, stylePrompt: string | undefined): string {
+function buildFirstRoundPrompt(functionPrompt: string | undefined, userPrompt: string | undefined): string {
+    const fn = functionPrompt?.trim();
     const user = userPrompt?.trim();
-    const style = stylePrompt?.trim();
-    if (user && style) return `${user}. ${style}`;
-    return user || style || '';
+    if (fn && user) return `${fn} ${user}`;
+    return fn || user || '';
 }
 
 export async function POST(request: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
         const body = (await request.json()) as GenerateImageBody;
         const {
             sourceImage,
-            stylePrompt,
+            functionPrompt,
             userPrompt,
             referenceImageUrl,
             adjustmentPrompt,
@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
             if (!sourceImage) {
                 return NextResponse.json({ error: 'sourceImage is required for first round' }, { status: 400 });
             }
-            finalPrompt = buildFirstRoundPrompt(userPrompt, stylePrompt);
+            finalPrompt = buildFirstRoundPrompt(functionPrompt, userPrompt);
             if (!finalPrompt) {
-                return NextResponse.json({ error: 'stylePrompt or userPrompt must be provided' }, { status: 400 });
+                return NextResponse.json({ error: 'functionPrompt or userPrompt must be provided' }, { status: 400 });
             }
             imageField = normalizeReferenceImage(sourceImage);
         }

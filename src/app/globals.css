@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: #0E0C0A;
-  --color-surface: #171411;
-  --color-surface-raised: #1F1B16;
-  --color-surface-hover: #26211B;
-  --color-border: #2A241D;
-  --color-border-strong: #3A3228;
+  --color-canvas: #0D0C0A;
+  --color-chat-panel: #1A1916;
+  --color-surface: #201C18;
+  --color-surface-raised: #2A251F;
+  --color-surface-hover: #332D25;
+  --color-border: #2E2822;
+  --color-border-strong: #413A32;
   --color-ink: #E8DFCF;
   --color-ink-soft: #A89E89;
   --color-ink-mute: #6B6152;
-  --color-accent: #C9A56F;
-  --color-accent-hover: #D9B885;
-  --color-accent-soft: rgba(201, 165, 111, 0.14);
+  --color-accent: #C97B4B;
+  --color-accent-hover: #D98F5F;
+  --color-accent-soft: rgba(201, 123, 75, 0.14);
   --color-danger: #D47F6B;
 
   --font-family-sans: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -41,10 +42,9 @@ a {
   letter-spacing: 0.01em;
 }
 
-/* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -52,15 +52,24 @@ a {
 ::-webkit-scrollbar-thumb {
   background: var(--color-border-strong);
   border-radius: 999px;
-  border: 2px solid var(--color-canvas);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-ink-mute);
+  background-clip: padding-box;
 }
 
-/* Subtle grain on canvas */
 .studio-grain {
   background-image:
-    radial-gradient(circle at 20% 10%, rgba(201, 165, 111, 0.04), transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(201, 165, 111, 0.03), transparent 40%);
+    radial-gradient(circle at 20% 10%, rgba(201, 123, 75, 0.04), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(201, 123, 75, 0.03), transparent 40%);
+}
+
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
+}
+.typing-dot {
+  animation: typing-dot 1.2s infinite;
 }
