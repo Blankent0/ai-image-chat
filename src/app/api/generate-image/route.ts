@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const maxDuration = 60;
+
 interface GenerateImageBody {
     sourceImage?: string;        // 首轮: data URL
     functionPrompt?: string;     // 首轮: 功能模块默认 prompt（英文）
