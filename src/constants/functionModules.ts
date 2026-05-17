@@ -1,4 +1,10 @@
-import type { FunctionModule } from '@/types/studio';
+export interface FunctionModule {
+    id: string;
+    name: string;
+    description: string;
+    defaultPrompt: string;
+    thumbnail?: string;
+}
 
 /**
  * 功能模块配置

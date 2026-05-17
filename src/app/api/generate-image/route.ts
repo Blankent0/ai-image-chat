@@ -9,6 +9,7 @@ interface GenerateImageBody {
     referenceImageUrl?: string;  // 后续轮: 上一张 Seedream URL
     adjustmentPrompt?: string;   // 后续轮: 调整指令
     resolution?: string;
+    size?: string;               // 精确 WxH（优先于 resolution）
 }
 
 function normalizeReferenceImage(raw: string): string {
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
             referenceImageUrl,
             adjustmentPrompt,
             resolution,
+            size,
         } = body;
 
         const apiKey = process.env.SEEDREAM_API_KEY;
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
             model: 'doubao-seedream-5-0-260128',
             prompt: finalPrompt,
             image: imageField,
-            size: resolution || '2K',
+            size: size || resolution || '2K',
             output_format: 'png',
             watermark: false,
         };

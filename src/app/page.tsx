@@ -1,11 +1,16 @@
-import ImageStudio from "@/components/ImageStudio";
+'use client';
+
+import dynamic from 'next/dynamic';
+
+const CanvasStudio = dynamic(
+    () => import('@/components/canvas/CanvasStudio'),
+    { ssr: false },
+);
 
 export default function Home() {
-  return (
-    <div className="studio-grain w-screen h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-[1400px] h-full max-h-[920px]">
-        <ImageStudio />
-      </div>
-    </div>
-  );
+    return (
+        <div className="studio-grain w-screen h-screen overflow-hidden">
+            <CanvasStudio />
+        </div>
+    );
 }
